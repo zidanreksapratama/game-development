@@ -27,6 +27,8 @@ public class PlayerAutoMove : MonoBehaviour
     private bool movingRight = true;
     private Vector2 startPos;
 
+    private enum MovementState { idle, walk, jump, fall, run }
+
     void Start()
     {
         body = GetComponent<Rigidbody2D>();
@@ -42,13 +44,12 @@ public class PlayerAutoMove : MonoBehaviour
     {
         if (isDead)
         {
-            anim.Play("Mati");
+            anim.SetInteger("state", (int)MovementState.idle);
             return;
         }
 
         AutoMove();
-        anim.SetBool("Lari", true);
-        anim.SetBool("Jump", !isGrounded);
+        UpdateAnimationState();
     }
 
     void AutoMove()
@@ -85,6 +86,30 @@ public class PlayerAutoMove : MonoBehaviour
                 isGrounded = false;
             }
         }
+    }
+
+    private void UpdateAnimationState()
+    {
+        MovementState state;
+
+        if (!isGrounded)
+        {
+            if (body.velocity.y > 0.1f)
+                state = MovementState.jump;
+            else if (body.velocity.y < -0.1f)
+                state = MovementState.fall;
+            else
+                state = MovementState.idle;
+        }
+        else
+        {
+            if (Mathf.Abs(body.velocity.x) > 0.1f)
+                state = MovementState.walk;
+            else
+                state = MovementState.idle;
+        }
+
+        anim.SetInteger("state", (int)state);
     }
 
     private void OnCollisionEnter2D(Collision2D collision)
@@ -141,10 +166,7 @@ public class PlayerAutoMove : MonoBehaviour
     public void Mati()
     {
         isDead = true;
-        anim.SetTrigger("Mati");
-        anim.SetBool("Lari", false);
-        anim.SetBool("Jump", false);
-
+        anim.SetInteger("state", (int)MovementState.idle); // fallback ke idle
         body.velocity = Vector2.zero;
         body.isKinematic = true;
         StartCoroutine(RestartGame());
